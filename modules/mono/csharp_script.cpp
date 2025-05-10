@@ -2233,6 +2233,8 @@ void CSharpScript::update_script_class_info(Ref<CSharpScript> p_script) {
 	// TODO: Use GDExtension godot_dictionary
 	Array methods_array;
 	methods_array.~Array();
+	Array properties_array;
+	properties_array.~Array();
 	Dictionary rpc_functions_dict;
 	rpc_functions_dict.~Dictionary();
 	Dictionary signals_dict;
@@ -2241,7 +2243,7 @@ void CSharpScript::update_script_class_info(Ref<CSharpScript> p_script) {
 	Ref<CSharpScript> base_script;
 	GDMonoCache::managed_callbacks.ScriptManagerBridge_UpdateScriptClassInfo(
 			p_script.ptr(), &type_info,
-			&methods_array, &rpc_functions_dict, &signals_dict, &base_script);
+			&methods_array, &properties_array, &rpc_functions_dict, &signals_dict, &base_script);
 
 	p_script->type_info = type_info;
 

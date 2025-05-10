@@ -115,7 +115,7 @@ namespace Godot.SourceGenerators
             var members = symbol.GetMembers();
 
             var propertySymbols = members
-                .Where(s => !s.IsStatic && s.Kind == SymbolKind.Property)
+                .Where(s => s.Kind == SymbolKind.Property)
                 .Cast<IPropertySymbol>()
                 .Where(s => !s.IsIndexer && s.ExplicitInterfaceImplementations.Length == 0);
 
@@ -193,7 +193,7 @@ namespace Godot.SourceGenerators
                         if (property.PropertySymbol.IsReadOnly || property.PropertySymbol.SetMethod!.IsInitOnly)
                             continue;
 
-                        GeneratePropertySetter(property.PropertySymbol.Name,
+                        GeneratePropertySetter(property.PropertySymbol.Name, property.PropertySymbol.IsStatic,
                             property.PropertySymbol.Type, property.Type, source);
                     }
 
@@ -202,7 +202,7 @@ namespace Godot.SourceGenerators
                         if (field.FieldSymbol.IsReadOnly)
                             continue;
 
-                        GeneratePropertySetter(field.FieldSymbol.Name,
+                        GeneratePropertySetter(field.FieldSymbol.Name, field.FieldSymbol.IsStatic,
                             field.FieldSymbol.Type, field.Type, source);
                     }
 
@@ -226,13 +226,13 @@ namespace Godot.SourceGenerators
                         if (property.PropertySymbol.IsWriteOnly)
                             continue;
 
-                        GeneratePropertyGetter(property.PropertySymbol.Name,
+                        GeneratePropertyGetter(property.PropertySymbol.Name, property.PropertySymbol.IsStatic,
                             property.PropertySymbol.Type, property.Type, source);
                     }
 
                     foreach (var field in godotClassFields)
                     {
-                        GeneratePropertyGetter(field.FieldSymbol.Name,
+                        GeneratePropertyGetter(field.FieldSymbol.Name, field.FieldSymbol.IsStatic,
                             field.FieldSymbol.Type, field.Type, source);
                     }
 
@@ -322,6 +322,7 @@ namespace Godot.SourceGenerators
 
         private static void GeneratePropertySetter(
             string propertyMemberName,
+            bool isStatic,
             ITypeSymbol propertyTypeSymbol,
             MarshalType propertyMarshalType,
             StringBuilder source
@@ -329,10 +330,11 @@ namespace Godot.SourceGenerators
         {
             source.Append("        ");
 
+            var qualifier = isStatic ? null : "this.";
             source.Append("if (name == PropertyName.@")
                 .Append(propertyMemberName)
                 .Append(") {\n")
-                .Append("            this.@")
+                .Append("            ").Append(qualifier).Append('@')
                 .Append(propertyMemberName)
                 .Append(" = ")
                 .AppendNativeVariantToManagedExpr("value", propertyTypeSymbol, propertyMarshalType)
@@ -343,6 +345,7 @@ namespace Godot.SourceGenerators
 
         private static void GeneratePropertyGetter(
             string propertyMemberName,
+            bool isStatic,
             ITypeSymbol propertyTypeSymbol,
             MarshalType propertyMarshalType,
             StringBuilder source
@@ -350,11 +353,12 @@ namespace Godot.SourceGenerators
         {
             source.Append("        ");
 
+            var qualifier = isStatic ? null : "this.";
             source.Append("if (name == PropertyName.@")
                 .Append(propertyMemberName)
                 .Append(") {\n")
                 .Append("            value = ")
-                .AppendManagedToNativeVariantExpr("this.@" + propertyMemberName,
+                .AppendManagedToNativeVariantExpr($"{qualifier}@{propertyMemberName}",
                     propertyTypeSymbol, propertyMarshalType)
                 .Append(";\n")
                 .Append("            return true;\n")
@@ -390,6 +394,8 @@ namespace Godot.SourceGenerators
                 .Append((int)propertyInfo.Usage)
                 .Append(", exported: ")
                 .Append(propertyInfo.Exported ? "true" : "false")
+                .Append(", @static: ")
+                .Append(propertyInfo.Static ? "true" : "false")
                 .Append("));\n");
         }
 
@@ -624,7 +630,7 @@ namespace Godot.SourceGenerators
                 propUsage |= PropertyUsageFlags.NilIsVariant;
 
             return new PropertyInfo(memberVariantType, memberName,
-                hint, hintString, propUsage, exported: true);
+                hint, hintString, propUsage, exported: true, @static: memberSymbol.IsStatic);
         }
 
         private static bool TryGetMemberExportHint(

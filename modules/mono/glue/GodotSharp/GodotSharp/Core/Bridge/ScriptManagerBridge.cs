@@ -751,7 +751,8 @@ namespace Godot.Bridge
 
         [UnmanagedCallersOnly]
         internal static unsafe void UpdateScriptClassInfo(IntPtr scriptPtr, godot_csharp_type_info* outTypeInfo,
-            godot_array* outMethodsDest, godot_dictionary* outRpcFunctionsDest, godot_dictionary* outEventSignalsDest, godot_ref* outBaseScript)
+            godot_array* outMethodsDest, godot_array* outPropertiesDest, godot_dictionary* outRpcFunctionsDest, 
+            godot_dictionary* outEventSignalsDest, godot_ref* outBaseScript)
         {
             try
             {
@@ -820,6 +821,23 @@ namespace Godot.Bridge
                             methodInfo.Add("flags", (int)method.Flags);
 
                             methods.Add(methodInfo);
+                        }
+                    }
+
+                    var staticPropertiesList = GetPropertyListForType(scriptType, true);
+                    if(staticPropertiesList is not null)
+                    {
+                        foreach(var staticProperty in staticPropertiesList)
+                        {
+                            var propertyInfo = new Collections.Dictionary()
+                            {
+                                ["name"] = staticProperty.Name
+                            };
+
+                            var returnVal = new Collections.Dictionary()
+                            {
+                                ["name"] = staticProperty.
+                            }
                         }
                     }
                 }
@@ -962,6 +980,23 @@ namespace Godot.Bridge
                 return null;
 
             return (List<MethodInfo>?)getGodotMethodListMethod.Invoke(null, null);
+        }
+
+        private static List<PropertyInfo>? GetPropertyListForType(Type type, bool staticOnly)
+        {
+            var getGodotPropertyListMethod = type.GetMethod(
+                "GetGodotPropertyList",
+                BindingFlags.DeclaredOnly | BindingFlags.Static |
+                BindingFlags.NonPublic | BindingFlags.Public);
+
+            if (getGodotPropertyListMethod == null)
+                return null;
+
+            var properties = (List<PropertyInfo>?)getGodotPropertyListMethod.Invoke(null, null);
+            if(staticOnly && properties is not null)
+                properties.RemoveAll(p => !p.Static);
+
+            return properties;
         }
 
 #pragma warning disable IDE1006 // Naming rule violation
